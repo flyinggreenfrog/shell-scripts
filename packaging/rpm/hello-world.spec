@@ -3,6 +3,7 @@ Version:    0.1
 Release:    1
 License:    GPL-3.0-only
 BuildArch:  noarch
+Group:      Development/Tools/Other
 URL:        https://github.com/flyinggreenfrog/shell-scripts
 Source:     https://github.com/flyinggreenfrog/shell-scripts/releases/%{version}/shell-scripts-%{version}.tar.gz
 Summary:    Hello world shell script
