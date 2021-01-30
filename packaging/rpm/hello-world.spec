@@ -27,3 +27,6 @@ install -m 555 bin/hello-world %{buildroot}/usr/bin/hello-world
 %doc README.md
 /usr/bin/hello-world
 /usr/share/shell-scripts
+
+%changelog
+* 2021-01-30 version 0.1
