@@ -1,5 +1,5 @@
 Name:       hello-world
-Version:    0.1
+Version:    0.1.1
 Release:    1
 License:    GPL-3.0-only
 BuildArch:  noarch
@@ -19,14 +19,14 @@ This package provides a hello world shell script.
 %install
 mkdir -p %{buildroot}/usr/bin/
 mkdir -p %{buildroot}/usr/share/shell-scripts/lib
-install -m 444 lib/hello-world %{buildroot}/usr/share/shell-scripts/lib/hello-world
-install -m 555 bin/hello-world %{buildroot}/usr/bin/hello-world
+install -m 555 usr/bin/hello-world %{buildroot}/usr/bin/hello-world
+install -m 444 usr/share/shell-scripts/lib/hello-world %{buildroot}/usr/share/shell-scripts/lib/hello-world
 
 %files
 %license LICENSE
 %doc README.md
 /usr/bin/hello-world
-/usr/share/shell-scripts
+/usr/share/shell-scripts/lib/hello-world
 
 %changelog
 # see git history of URL

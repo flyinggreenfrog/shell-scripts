@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Copyright (C) 2021 Peter Hoffmann
+# SPDX-License-Identifier: GPL-3.0-only
+
+### Functions
+
+function hello_world {
+  echo 'Hello world'
+}
+
+### Main
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  echo "Don't execute this script '$0', source it instead." 1>&2
+fi

@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Copyright (C) 2021 Peter Hoffmann <hoffmann@b1-systems.de>
+# Copyright (C) 2021 Peter Hoffmann
 # SPDX-License-Identifier: GPL-3.0-only
+
+set -eEuo pipefail
 
 source /usr/share/shell-scripts/lib/hello-world
 
