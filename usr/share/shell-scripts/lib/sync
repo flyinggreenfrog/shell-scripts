@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Copyright (C) 2021 Peter Hoffmann
+# SPDX-License-Identifier: GPL-3.0-only
+
+source /usr/share/shell-scripts/lib/base
+
+### Functions
+
+function sync_pair {
+  local pair=$1
+
+  Info "Syncing pair '$pair'."
+  'vdirsyncer' sync --force-delete "$pair"
+  Info "Synced pair '$pair'."
+}
+
+function metasync_pair {
+  local pair=$1
+
+  Info "Metasyncing pair '{pair'."
+  'vdirsyncer' metasync "$pair"
+  Info "Metasynced pair '$pair'."
+}
+
+### Main
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  Error "Don't execute this script '$0', source it instead." >/dev/null
+fi
