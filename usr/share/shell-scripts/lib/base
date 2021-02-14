@@ -1,0 +1,298 @@
+#!/bin/bash
+
+# Copyright (C) 2021 Peter Hoffmann
+# SPDX-License-Identifier: GPL-3.0-only
+
+### Set variables
+
+DEBUG="${DEBUG:-false}"
+LOG="${LOG:-$DEBUG}"
+VERBOSE="${VERBOSE:-$DEBUG}"
+
+export SCRIPT_VERSION='0.1.1'
+export SCRIPT_URL='https://github.com/flyinggreenfrog/shell-scripts'
+
+### Trap functions
+
+# shellcheck disable=SC2034  # used in scripts sourcing this file
+function general_trap {
+  local rc=$1
+
+  case "$rc" in
+    (0)
+      RC_STATUS='OK'
+      RC_MSG='succeeded'
+      ;;
+    (130)
+      RC_STATUS='ERR'
+      RC_MSG='interrupted'
+      ;;
+    (*)
+      RC_STATUS='ERR'
+      RC_MSG='failed'
+      ;;
+  esac
+}
+
+### Check functions
+
+# ! is_true is not is_false
+function is_true {
+  case "$1" in
+    ([tT]rue | [yY]es | [yY])
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+# ! is_false is not is_true
+function is_false {
+  case "$1" in
+    ([fF]alse | [nN]o | [nN])
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+function is_positive_integer {
+  if [[ $1 =~ ^0+$ ]]; then
+    return 1
+  elif [[ $1 =~ ^[0-9]+$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Check, if first argument is one of the other arguments
+function contains {
+  local search=$1
+  shift
+  local element
+
+  for element; do
+    [[ $element == "$search" ]] && return 0
+  done
+  return 1
+}
+
+# Check, if any of the arguments is executable (logical OR condition)
+function has_binary {
+  local bin
+
+  for bin in "$@"; do
+    type "$bin" &> /dev/null && return 0
+  done
+  return 1
+}
+
+function check_commands {
+  local cmd
+
+  for cmd in "$@"; do
+    has_binary "$cmd" || Error "Can't find command '$cmd'."
+  done
+}
+
+### Output functions
+
+# Output to stderr only
+function Log {
+  local timestamp
+
+  if is_true "$LOG"; then
+    timestamp=$( date --iso-8601=ns )
+    if (( $# > 0 )); then
+      echo "$timestamp $*" 1>&2
+    else
+      while read -r line; do
+        echo "$timestamp $line" 1>&2
+      done
+    fi
+  fi
+}
+
+# Output to stdout (if verbose) and stderr
+function Info {
+  if (( $# > 0 )); then
+    Log "$*"
+    if is_true "$VERBOSE"; then
+      echo "$*"
+    fi
+  else
+    while read -r line; do
+      Log "$line"
+      if is_true "$VERBOSE"; then
+        echo "$line"
+      fi
+    done
+  fi
+}
+
+# Output to stdout and stderr
+function Print {
+  if (( $# > 0 )); then
+    Log "$*"
+    echo "$*"
+  else
+    while read -r line; do
+      Log "$line"
+      echo "$line"
+    done
+  fi
+}
+
+# Output to stdout and stderr, then exit
+function Error {
+  local rc
+
+  if [[ $1 =~ ^[0-9]+$ ]]; then
+    rc=$1
+    shift
+  else
+    rc=1
+  fi
+  Print "[ERROR] $*"
+  exit "$rc"
+}
+
+function Confirm {
+  local prompt="${1:-Continue? (y|n) [y] }"
+  local default="${2:-y}"
+  local confirm
+
+  Log "$prompt"
+  echo -n "$prompt"
+  read -n 1 -r confirm
+
+  if [[ -z "$confirm" ]]; then
+    confirm="$default"
+  else
+    echo
+  fi
+
+  Log "Selection: $confirm"
+
+  if is_true "$confirm"; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+### Directory functions
+
+function mypushd {
+  local dir=$1
+
+  [[ -d "$dir" ]] \
+    || Error 2 "Directory '$dir' doesn't exist."
+
+  builtin pushd "$dir" > /dev/null \
+    || Error "pushd '$dir' failed."
+}
+
+function mypopd {
+  builtin popd > /dev/null \
+    || Error 'popd failed.'
+}
+
+function absolute_path {
+  local path=$1
+
+  if [[ -d "$path" ]]; then
+    # directory
+    (cd "$path" || Error "cd '$path' failed"; pwd)
+  elif [[ -f "$path" ]]; then
+    # file
+    if [[ $path == */* ]]; then
+      echo "$(cd "${path%/*}" || Error "cd '${path%/*}' failed"; pwd)/${path##*/}"
+    else
+      echo "$(pwd)/$path"
+    fi
+  fi
+}
+
+### Initialization functions
+
+function init_start {
+  MYSTART=$( 'date' --iso-8601=seconds ) \
+    || Error 'Failed to get current time MYSTART.'
+  export MYSTART
+}
+
+### Logfile functions
+
+function check_logfile {
+  local logfile=$1
+
+  [[ -n "$logfile" ]] \
+    || Error "($(caller) No logfile specified (arg 1)."
+
+  [[ -e "$logfile" ]] \
+    || Error "Logfile '$logfile' doesn't exist."
+  [[ -w "$logfile" ]] \
+    || Error "Logfile '$logfile' not writable."
+}
+
+function initialize_logfile {
+  local logfile=$1
+
+  [[ -n "$logfile" ]] \
+    || Error "($(caller)) No logfile specified (arg 1)."
+
+  mkdir -p "${logfile%/*}" 2> /dev/null \
+    || Error "Can't create logfile directory '${logfile%/*}'."
+
+  true > "$logfile" \
+    || Error "Can't create/truncate logfile '$logfile'."
+  chmod 600 "$logfile" \
+    || Error "Failed to set mode 600 on logfile '$logfile'."
+
+  check_logfile "$logfile"
+}
+
+function cleanup_old_logfiles {
+  local logdir=${1%/*}
+  local suffix=$2
+  local logfile_count=$3
+  local logfile
+
+  [[ -n "$logdir" ]] \
+    || Error "($(caller)) No logfile specified (arg 1)."
+  [[ -n "$suffix" ]] \
+    || Error "($(caller)) No suffix specified (arg 2)."
+  [[ -n "$logfile_count" ]] \
+    || Error "($(caller)) No logfile_count specified (arg 3)."
+
+  Log "Keeping $logfile_count logfiles."
+  for logfile in $( shopt -s nullglob; ls -dt "$logdir"/*"$suffix" ); do
+    logfile_count=$(( logfile_count - 1 ))
+    if (( logfile_count < 0 )); then
+      'rm' -f "$logfile" \
+        || Error "Failed to remove old logfile '$logfile'."
+      Log "Removed old logfile '$logfile'."
+    fi
+  done
+}
+
+function output_logfile {
+  local logfile=$1
+
+  [[ -n "$logfile" ]] \
+    || Error "($(caller)) No logfile specified (arg 1)."
+
+  if ! [[ -e "$logfile" ]]; then
+    Info "Logfile '$logfile' doesn't exist."
+  else
+    cat "$logfile"
+  fi
+}
+
+### Main
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  Error "Don't execute this script '$0', source it instead." >/dev/null
+fi

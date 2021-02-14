@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Copyright (C) 2021 Peter Hoffmann
+# SPDX-License-Identifier: GPL-3.0-only
+
+source base
+
+### Helper variables
+
+export iso8601ns='[0-9]{4}-(0[1-9]|1[1-2])-(0[1-9]|[1-2][0-9]|3[0-1])T([0-1][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]),[0-9]{9}(\+|\-)[0-9]{2}:[0-9]{2}'
+
+### Helper functions
+
+function want {
+  echo -e "want: ($1) '$2'"
+}
+
+function have {
+  echo -e "have: ($1) '$2'"
+}
+
+function assert_equal {
+  local status_want=$1
+  local output_want=$2
+  local status_have="${status?}"
+  local output_have=${3:-$output}
+
+  want "$status_want" "$output_want"
+  have "$status_have" "$output_have"
+
+  [[ "$output_have" == "$output_want" ]]
+  [[ "$status_have" == "$status_want" ]]
+}
+
+function assert_regexp {
+  local status_want=$1
+  local output_want=$2
+  local status_have="${status?}"
+  local output_have=${3:-$output}
+
+  want "$status_want" "$output_want"
+  have "$status_have" "$output_have"
+
+  [[ "$output_have" =~ $output_want ]]
+  [[ "$status_have" == "$status_want" ]]
+}
+
+### Main
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  Error "Don't execute this script '$0', source it instead." >/dev/null
+fi
