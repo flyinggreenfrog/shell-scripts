@@ -294,5 +294,5 @@ function output_logfile {
 ### Main
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  Error "Don't execute this script '$0', source it instead." >/dev/null
+  Error "Don't execute this script '$0', source it instead."
 fi
