@@ -28,6 +28,8 @@ install -m 444 usr/share/shell-scripts/lib/sync %{buildroot}/usr/share/shell-scr
 %license LICENSE
 %doc README.md
 /usr/bin/t
+%dir /usr/share/shell-scripts
+%dir /usr/share/shell-scripts/lib
 /usr/share/shell-scripts/lib/base
 /usr/share/shell-scripts/lib/git
 /usr/share/shell-scripts/lib/sync

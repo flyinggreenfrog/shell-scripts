@@ -26,6 +26,8 @@ install -m 444 usr/share/shell-scripts/lib/hello-world %{buildroot}/usr/share/sh
 %license LICENSE
 %doc README.md
 /usr/bin/hello-world
+%dir /usr/share/shell-scripts
+%dir /usr/share/shell-scripts/lib
 /usr/share/shell-scripts/lib/hello-world
 
 %changelog
