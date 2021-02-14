@@ -1,0 +1,145 @@
+#!/bin/bash
+
+# Copyright (C) 2021 Peter Hoffmann
+# SPDX-License-Identifier: GPL-3.0-only
+
+source /usr/share/shell-scripts/lib/git
+
+### Functions
+
+function t_variables {
+  readonly SCRIPT_NAME="${0##*/}"
+  T_DEFAULTACTION='list'
+  T_GITACTIONS=(
+    'add' 'a' 'aa' 'ab' 'ac' 'addto'
+    'archive'
+    'del' 'rm'
+    'edit' 'note'
+    'depri' 'dp'
+    'do'
+    'move' 'mv'
+    'pri' 'p'
+    'repeat'
+    'report'
+    'revive'
+  )
+  T_REPO="$HOME/Todos"
+  T_CONF="$HOME/.config/t.conf"
+
+  if [[ -r "$T_CONF" ]]; then
+    # shellcheck source=/dev/null
+    source "$T_CONF"
+  fi
+}
+
+function t_init {
+  set -eEuo pipefail
+  is_true "$DEBUG" && set -x
+
+  # Make sure, that we use only English
+  export LC_CTYPE=C LC_ALL=C LANG=C
+
+  check_commands todo.sh git
+  t_variables
+}
+
+function t_usage {
+  cat <<EOT
+Usage: $SCRIPT_NAME [OPTIONS] ACTION
+
+  -h this help
+  -V version
+
+  -v verbose
+
+  ACTION: default -> $T_DEFAULTACTION
+          available actions -> check todo.sh
+EOT
+}
+
+function t_version {
+  cat <<EOT
+Script: $SCRIPT_NAME
+Version: $SCRIPT_VERSION
+Author: Peter Hoffmann
+Url: $SCRIPT_URL
+EOT
+}
+
+function t_process_commandline {
+  local OPTIND
+
+  while getopts ':hVv' OPT "${args[@]}"; do
+    case "$OPT" in
+      (h)
+        t_usage
+        exit 0
+        ;;
+      (V)
+        t_version
+        exit 0
+        ;;
+     (v)
+        # shellcheck disable=SC2034
+        VERBOSE=true
+        ;;
+      (\?)
+        Error "Unknown option -$OPTARG."
+        ;;
+      (:)
+        Error "Option -$OPTARG requires an argument."
+        ;;
+    esac
+  done
+
+  args=( "${args[@]:(( OPTIND-1 ))}" )
+
+  if [[ -z "${args[0]-}" ]]; then
+    T_ACTION="$T_DEFAULTACTION"
+  else
+    T_ACTION="${args[0]-}"
+    args=( "${args[@]:1}" )
+  fi
+
+  if contains "$T_ACTION" "${T_GITACTIONS[@]}"; then
+    T_USEGIT=true
+  else
+    T_USEGIT=false
+  fi
+}
+
+function t_main {
+  local -a args=( "$@" )
+
+  t_init
+  t_process_commandline
+
+  if is_true "$T_USEGIT"; then
+    if git_repo_has_changes "$T_REPO"; then
+      if Confirm 'Commit currently uncommitted changes? (y|n) [y] ' 'y'; then
+        git_commit_changes "$T_REPO" "Committed with script $SCRIPT_NAME."
+      else
+        Error "Don't continue because of uncommitted changes."
+      fi
+    fi
+  fi
+
+  todo.sh "$T_ACTION" "${args[@]}"
+
+  if is_true "$T_USEGIT"; then
+    if git_repo_has_changes "$T_REPO"; then
+      if Confirm 'Commit new changes? (y|n) [y] ' 'y'; then
+        git_commit_changes "$T_REPO" \
+          "Changed with script $SCRIPT_NAME, action $T_ACTION."
+      else
+        Print 'Nothing committed by request. Exiting.'
+      fi
+    fi
+  fi
+}
+
+### Main
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  t_main "$@"
+fi
