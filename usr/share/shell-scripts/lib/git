@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Copyright (C) 2021 Peter Hoffmann
+# SPDX-License-Identifier: GPL-3.0-only
+
+source /usr/share/shell-scripts/lib/base
+
+### Functions
+
+function git_check_repo {
+  local repo="$1"
+
+  [[ -d "$repo" ]] \
+    || Error "Directory '$repo' doesn't exist."
+
+  is_true "$( git -C "$repo" rev-parse --is-inside-work-tree 2>/dev/null )" \
+    || Error "Directory '$repo' is not a valid git repo."
+}
+
+function git_repo_has_changes {
+  local repo="$1"
+  local git_status
+
+  git_check_repo "$repo"
+
+  git_status="$( git -C "$repo" status --porcelain )"
+  if [[ -z "$git_status" ]]; then
+    Info "Repo '$repo' is clean."
+    return 1
+  else
+    Print "Repo '$repo' has uncommitted changes:"
+    echo "$git_status" | Print
+    Print 'Unstaged changes:'
+    git -C "$repo" diff
+    Print 'Staged changes:'
+    git -C "$repo" diff --staged
+    return 0
+  fi
+}
+
+function git_commit_changes {
+  local repo="$1"
+  local commitmsg="$2"
+
+  Info "Staging changes in repo '$repo'."
+  git -C "$repo" add --all 2>/dev/null \
+    || Error 'Staging changes failed.'
+  Info "Staged changes."
+  Info "Committing changes in repo '$repo'."
+  git -C "$repo" commit --quiet --all --message "$commitmsg" 2>/dev/null \
+    || Error 'Committing changes failed.'
+  Print "Committed changes."
+}
+
+### Main
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  Error "Don't execute this script '$0', source it instead."
+fi
